@@ -13,5 +13,7 @@ Twitter sentiment analysis
 ##Instructions
 * train model with train.py
 * run listener with listen.py.
+
 Output looks like:
+
 sentiment | tweet text
