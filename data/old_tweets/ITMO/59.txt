@@ -1,1 +1,0 @@
-#Babel + #Electron + #React + #Browserify + #SASS /  / Полный стек технологий для быстрого старта в создании свое.. https://t.co/3QdgVCzEAJ
