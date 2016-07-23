@@ -64,7 +64,7 @@ def predict_sentiment(text, date):
 class MyStreamListener(tweepy.streaming.StreamListener):
     def on_status(self, status):
         sentiment = predict_sentiment(status.text, status.created_at)
-        print sentiment, status.text
+        print sentiment, '|', status.text
 
 #пока только русский язык т.к. классификатор обучен только на русских твитах
 #TODO: английский язык
