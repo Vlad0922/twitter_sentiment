@@ -50,7 +50,7 @@ def preprocess_tweet(text, date):
 
         return scipy.sparse.hstack([text, date])
 
-SENTIMENT_THRESHOLD = 0.8
+SENTIMENT_THRESHOLD = 0.7
 def predict_sentiment(text, date):
     msg = preprocess_tweet(text, date)
     proba = model.predict_proba(msg)[0]
