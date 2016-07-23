@@ -1,18 +1,18 @@
 # twitter_sentiment
-Twitter sentiment analysis 
+Анализ тональности сообщений в твиттере по фильтру.
 
-##Dependencies
+##Зависимости
 * scikit-learn
 * numpy
 * pandas
 * scipy
 * tweepy
 * nltk
-* seaborn for notebooks (optional)
+* seaborn для графиков в ноутбуках (опционально)
 
-##Instructions
+##Инструкция
 
-Create file tokens.txt with tour API keys for twitter. File must contain
+Необходимо создать файл tokens.txt с ключами API для твиттера. В файле должны содержаться:
 
 ```shell
 access_token
@@ -25,13 +25,13 @@ consumer_secret
 
 ```
 
-With order like above
+В указанном выше порядке.
 
-After you can
+Работа происходит с помощью двух скриптов
 
-* train model with train.py
-* run listener with listen.py.
+* Для обучения необходимо запустить train.py
+* Для запуска стрима твитов надо запустить listen.py
 
-Output looks like:
+Вывод происходит в виде "тональность | текст твита", так же классифицированные сообщения логгируются в data/stream
 
-sentiment | tweet text
+Данные для обучения взяты с сайта http://study.mokoron.com/ [статья](http://www.swsys.ru/index.php?page=article&id=3962)
