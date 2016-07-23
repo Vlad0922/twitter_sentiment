@@ -34,25 +34,18 @@ class StdOutListener(StreamListener):
         return True
 
 keywords = {
-    'MIPT': ' OR '.join([u'МФТИ', u'физтех', u'\"Московский физико-технический институт\"', 'MIPT', 'phystech']),
-    'MSU': ' OR '.join([u'МГУ', u'\"Московский Государственный Университет\"']), #MSU count as Michigan state university in most tweets
-    'ITMO': ' OR '.join([u'ИТМО', 'ITMO']),
-    'SPAU': 'СПбАУ',
-    'SPBU': ' OR '.join([u'СПбГУ', 'SPBU']),
+    'MIPT': ' OR '.join([u'МФТИ', u'физтех', u'\"Московский физико-технический институт\"']),
+    # 'MSU': ' OR '.join([u'МГУ', u'\"Московский Государственный Университет\"']), #MSU count as Michigan state university in most tweets
+    # 'ITMO': ' OR '.join([u'ИТМО', 'ITMO']),
+    # 'SPAU': 'СПбАУ',
+    # 'SPBU': ' OR '.join([u'СПбГУ', 'SPBU']),
 }
 
-if __name__ == '__main__':
-    
+if __name__ == '__main__':    
     #load twitter API tokens from file  
     with open('tokens.txt') as f:
         (access_token, access_token_secret,
             consumer_key, consumer_secret) = f.read().split()
-
-    tweets = dict()
-
-    #init tweets table
-    for u in keywords:
-        tweets[u] = list()
 
     auth = OAuthHandler(consumer_key, consumer_secret)
     auth.set_access_token(access_token, access_token_secret)
@@ -60,20 +53,15 @@ if __name__ == '__main__':
 
     for u in keywords:
         finded = 0
-        for tweet in Cursor(api.search,
-                                   q=keywords[u],
-                                   rpp=100,
-                                   result_type="recent").items():
+
+        f = codecs.open('data/old_tweets/' + u + '.csv', 'w', 'utf-8')
+
+        for tweet in Cursor(api.search, q=keywords[u], 
+                            rpp=100, result_type="recent").items():
             finded += 1
 
             msg = tweet.text.replace('\n', ' ').replace('\r', ' ')
-            tweets[u].append(msg)
-
-        #removing non-unique tweets
-        tweets[u] = list(set(tweets[u]))
+            f.write(str(tweet.created_at) + ';' + msg + '\n')
 
         print u, finded
-
-    for u in tweets:
-        with codecs.open('data/' + u + '.csv', 'w', 'utf-8') as f:
-            f.write(';\n'.join(tweets[u]))
+        f.close()
