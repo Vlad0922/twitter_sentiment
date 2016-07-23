@@ -16,6 +16,7 @@ from sklearn.preprocessing import OneHotEncoder
 import pickle
 import datetime
 import time
+import codecs
 
 tknzr = TweetTokenizer()
 def tweet_tokenize(msg):
@@ -65,6 +66,10 @@ class MyStreamListener(tweepy.streaming.StreamListener):
     def on_status(self, status):
         sentiment = predict_sentiment(status.text, status.created_at)
         print sentiment, '|', status.text
+
+        with codecs.open('data/stream/MIPT.csv', 'a', 'utf-8') as f:
+            f.write('%s;%s;%s\n' % (str(status.created_at), status.text, sentiment))
+
 
 #пока только русский язык т.к. классификатор обучен только на русских твитах
 #TODO: английский язык
