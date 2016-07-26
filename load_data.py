@@ -7,11 +7,11 @@ from tweepy import Cursor
 import codecs
 
 keywords = {
-    #'MIPT': ' OR '.join([u'МФТИ', u'физтех', u'\"Московский физико-технический институт\"']),
+    'MIPT': ' OR '.join([u'МФТИ', u'физтех', u'\"Московский физико-технический институт\"']),
     #'MSU':  u'МГУ', #MSU count as Michigan state university in most tweets
-    'ITMO': u'ИТМО',
-    'SPAU': u'СПбАУ',
-    'SPBU': u'СПбГУ'
+     'ITMO': u'ИТМО',
+     'SPAU': u'СПбАУ',
+     'SPBU': u'СПбГУ'
 }
 
 if __name__ == '__main__':    
@@ -24,17 +24,23 @@ if __name__ == '__main__':
     auth.set_access_token(access_token, access_token_secret)
     api = tweepy_API(auth)
 
+    columns = 'tdate;ttext;tgeo\n'
     for u in keywords:
         finded = 0
 
         f = codecs.open('data/old_tweets/' + u + '.csv', 'w', 'utf-8')
+        f.write(columns)
 
         for tweet in Cursor(api.search, q=keywords[u], 
                             rpp=100, result_type="recent").items():
             finded += 1
 
-            msg = tweet.text.replace('\n', ' ').replace('\r', ' ')
-            f.write(str(tweet.created_at) + ';' + msg + '\n')
+            msg = tweet.text.replace('\n', ' ').replace('\r', ' ').replace(';', '')
+            coord = tweet.geo
+            if coord != None:
+                coord = ','.join(map(str, coord['coordinates']))
+
+            f.write(str(tweet.created_at) + ';' + msg + ';' + str(coord) + '\n')
 
         print u, finded
         f.close()
