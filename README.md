@@ -8,7 +8,8 @@
 * scipy
 * tweepy
 * nltk
-* seaborn для графиков в ноутбуках (опционально)
+* matplotlib и seaborn для графиков в ноутбуках (опционально)
+* gmaps плагин для jupyter notebooks опционально (https://github.com/pbugnion/gmaps)
 
 ##Инструкция
 
@@ -26,6 +27,8 @@ consumer_secret
 ```
 
 В указанном выше порядке.
+
+Если использовать google maps, то необходимо указать API key от Google Maps JS API в файле maps_token.txt
 
 Работа происходит с помощью двух скриптов
 
