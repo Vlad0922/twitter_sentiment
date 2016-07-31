@@ -1,0 +1,9 @@
+python-socketio
+gevent ==1.1b4
+gevent-socketio
+gevent-websocket
+flask-socketio
+tweepy
+Flask
+nltk
+pandas

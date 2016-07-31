@@ -9,9 +9,9 @@ import codecs
 keywords = {
     'MIPT': ' OR '.join([u'МФТИ', u'физтех', u'\"Московский физико-технический институт\"']),
     #'MSU':  u'МГУ', #MSU count as Michigan state university in most tweets
-     'ITMO': u'ИТМО',
-     'SPAU': u'СПбАУ',
-     'SPBU': u'СПбГУ'
+    # 'ITMO': u'ИТМО',
+    # 'SPAU': u'СПбАУ',
+     #'SPBU': u'СПбГУ'
 }
 
 if __name__ == '__main__':    
@@ -24,11 +24,11 @@ if __name__ == '__main__':
     auth.set_access_token(access_token, access_token_secret)
     api = tweepy_API(auth)
 
-    columns = 'tdate;ttext;tgeo\n'
+    columns = 'tname;tdate;ttext;tgeo\n'
     for u in keywords:
         finded = 0
 
-        f = codecs.open('data/old_tweets/' + u + '.csv', 'w', 'utf-8')
+        f = codecs.open('webapp/data/old_tweets/' + u + '.csv', 'w', 'utf-8')
         f.write(columns)
 
         for tweet in Cursor(api.search, q=keywords[u], 
@@ -40,7 +40,7 @@ if __name__ == '__main__':
             if coord != None:
                 coord = ','.join(map(str, coord['coordinates']))
 
-            f.write(str(tweet.created_at) + ';' + msg + ';' + str(coord) + '\n')
+            f.write(tweet.user.name + ';' + str(tweet.created_at) + ';' + msg + ';' + str(coord) + '\n')
 
         print u, finded
         f.close()

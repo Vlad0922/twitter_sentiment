@@ -39,8 +39,8 @@ def tweet_tokenize(msg):
     return tknzr.tokenize(msg)
 
 if __name__ == '__main__':
-    neg = pd.read_csv('data/train/negative.csv', sep = ';')
-    pos = pd.read_csv('data/train/positive.csv', sep = ';')
+    neg = pd.read_csv('train_data/negative.csv', sep = ';')
+    pos = pd.read_csv('train_data/positive.csv', sep = ';')
 
     X = pd.concat([pos, neg])
 
@@ -74,10 +74,10 @@ if __name__ == '__main__':
     print '*** Dumping midels ***'
     start_time = time.time()
 
-    with open('models/model_sgd.pkl', 'wb') as f:
+    with open('webapp/models/model_sgd.pkl', 'wb') as f:
         pickle.dump(model, f)
 
-    with open('models/vectorizer.pkl', 'wb') as f:
+    with open('webapp/models/vectorizer.pkl', 'wb') as f:
         pickle.dump(vectorizer, f)
 
     print '*** Dumping completed: %s minutes ***' % round(((time.time() - start_time) / 60), 2)
