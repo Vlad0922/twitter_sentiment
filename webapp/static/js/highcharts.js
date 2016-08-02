@@ -1,6 +1,8 @@
 var statistics;
 var show_blocks = true;
 
+var TABLE_SIZE = 10
+
 // request initial data from server
 function requestData() {
     $.ajax({
@@ -10,10 +12,6 @@ function requestData() {
 
             overall_chart.series[0].setData(msg['overall_pos']);
             overall_chart.series[1].setData(msg['overall_neg']);
-
-            // block_chart.series[0].setData(msg['blocks_pos']);
-            // block_chart.series[1].setData(msg['blocks_neg']);
-
 
             for (i = 0, len = msg['last_tweets'].length; i < len; i++) {
                 append_tweet(msg['last_tweets'][i])
@@ -33,30 +31,15 @@ function requestData() {
     });
 }
 
-function isJson(str) {
-    try {
-        JSON.parse(str);
-    } catch (e) {
-        return false;
-    }
-    return true;
-}
-
-function append_tweet(data) {
-    if(isJson(data)) {
-        var obj = jQuery.parseJSON(data);
-    } else {
-        var obj = data;
-    }
-
+function append_tweet(obj) {
     var table = document.getElementById("tweets_table");
 
     // header is part of a table O.o
-    if (table.rows.length > 5) {
-        table.deleteRow(1);
+    if (table.rows.length > TABLE_SIZE) {
+        table.deleteRow(TABLE_SIZE);
     }
 
-    var row = table.insertRow(table.rows.length);
+    var row = table.insertRow(1);
     var author_cell = row.insertCell(0);
     author_cell.innerHTML = obj['name'];
 
@@ -111,6 +94,32 @@ function switch_charts() {
     show_blocks = !show_blocks;
 }
 
+function add_data(obj) {
+    console.log('adding data')
+
+    console.log(obj['time'], typeof(obj['time']))
+    console.log(statistics['overall_pos'][statistics['overall_pos'].length - 1])
+    console.log(statistics['overall_pos'][statistics['overall_pos'].length - 1][0] < obj['time'])
+
+    if(show_blocks) {
+        overall_chart.series[0].addPoint([obj['time'], obj['overall_pos']], true, true)
+        overall_chart.series[1].addPoint([obj['time'], obj['overall_neg']], true, true)  
+
+        if (obj['blocks_pos'] != null) {
+            statistics['blocks_pos'].push([obj['time'], obj['blocks_pos']])
+            statistics['blocks_neg'].push([obj['time'], obj['blocks_neg']])  
+        }
+    } else {
+        if (obj['blocks_pos'] != null) {
+            overall_chart.series[0].addPoint([obj['time'], obj['blocks_pos']], true, true)
+            overall_chart.series[1].addPoint([obj['time'], obj['blocks_neg']], true, true)  
+        }
+
+        statistics['overall_pos'].push([obj['time'], obj['overall_pos']])
+        statistics['overall_neg'].push([obj['time'], obj['overall_neg']])  
+    }
+}
+
 $(document).ready(function() {
     var socket = io.connect('/tweets');
     socket.on('connect', function() {
@@ -118,7 +127,19 @@ $(document).ready(function() {
     });
 
     socket.on('tweet_text', function(data) {
-        append_tweet(data);
+        var obj = jQuery.parseJSON(data);
+        // if data isn't JSON
+        if (obj == null) {
+            obj = data;
+        }
+
+        if (obj['type'] == 'tweet') {
+            append_tweet(obj);
+        }
+
+        if (obj['type'] == 'new_data') {
+            add_data(obj)
+        }
     });
 
     overall_chart = new Highcharts.StockChart({
