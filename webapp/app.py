@@ -9,6 +9,12 @@ import time
 import threading
 import pickle
 
+from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.declarative import declarative_base
+
+import sqlite3
+
 from collections import deque
 
 from flask import Flask, render_template, make_response, request
@@ -44,38 +50,57 @@ with open('tokens.txt') as f:
         consumer_key, consumer_secret) = f.read().split()
 
 def date_distribution(X, date_from, date_to, step = 'day', step_count = 1, by_blocks = False):
-    neg = X[X['ttype'] == NEG_TWEET]
-    pos = X[X['ttype'] == POS_TWEET]
-    
-    neg_date = neg[neg['tdate'] < date_to]
-    pos_date = pos[pos['tdate'] < date_to]
-    
-    if step == 'minute':
-        step = 60
-    elif step == 'hour':
-        step = 60*60
-    elif step == 'day':
-        step = 60*60*24
-    elif step == 'week':
-        step = 60*60*24*7
+    if step:   
+        neg = X[X['ttype'] == NEG_TWEET]
+        pos = X[X['ttype'] == POS_TWEET]
 
-    step *= step_count
-    
-    pos_count = list()
-    neg_count = list()
-    
-    dates_in_range = range(date_from, date_to, step)
-    
-    for date in dates_in_range:
-        if by_blocks:
-            pos_count.append(pos_date[(pos_date['tdate'] > date) & (pos_date['tdate'] < (date + step))].shape[0])
-            neg_count.append(neg_date[(neg_date['tdate'] > date) & (neg_date['tdate'] < (date + step))].shape[0])
-        else:
-            pos_count.append(pos_date[pos_date['tdate'] < date].shape[0])
-            neg_count.append(neg_date[neg_date['tdate'] < date].shape[0])
-    
-    #scale for js       
-    dates_in_range = [d*1000 for d in dates_in_range]
+        neg_date = neg[neg['tdate'] < date_to]
+        pos_date = pos[pos['tdate'] < date_to]
+        
+        if step == 'minute':
+            step = 60
+        elif step == 'hour':
+            step = 60*60
+        elif step == 'day':
+            step = 60*60*24
+        elif step == 'week':
+            step = 60*60*24*7
+
+        step *= step_count
+        
+        pos_count = list()
+        neg_count = list()
+        
+        dates_in_range = range(date_from, date_to, step)
+        
+        for date in dates_in_range:
+            if by_blocks:
+                pos_count.append(pos_date[(pos_date['tdate'] > date) & (pos_date['tdate'] < (date + step))].shape[0])
+                neg_count.append(neg_date[(neg_date['tdate'] > date) & (neg_date['tdate'] < (date + step))].shape[0])
+            else:
+                pos_count.append(pos_date[pos_date['tdate'] < date].shape[0])
+                neg_count.append(neg_date[neg_date['tdate'] < date].shape[0])
+        
+        #scale for js       
+        dates_in_range = [d*1000 for d in dates_in_range]
+    else:
+        dates_in_range = list()
+        pos_count = list()
+        neg_count = list()
+
+        pos_total = 0
+        neg_total = 0
+
+        for index, row in X.iterrows():
+            if row['ttype'] == POS_TWEET:
+                pos_total += 1
+            else:
+                neg_total += 1
+
+            dates_in_range.append(row['tdate']*1000)
+            pos_count.append(pos_total)
+            neg_count.append(neg_total)
+
     return dates_in_range, pos_count, neg_count
 
 tknzr = TweetTokenizer()
@@ -91,6 +116,24 @@ def preprocess_tweet(text):
 SENTIMENT_THRESHOLD = 0.7
 def predict_sentiment(text):
     return model.predict(preprocess_tweet(text))[0]
+
+def send_to_db(tweet, sentiment):
+    global conn, cursor
+
+    if conn == None:
+        conn = sqlite3.connect('data/tweets.db', isolation_level=None)
+        cursor = conn.cursor()
+
+    msg = tweet.text.replace('\n', ' ').replace('\r', ' ').replace(';', '')
+
+    coord = tweet.geo
+    if coord != None:
+        coord = ','.join(map(str, coord['coordinates']))
+
+    #tname, tdate, ttext, tgeo, ttype
+    q = 'insert into tweets values(?, ?, ?, ?, ?)'
+    cursor.execute(q, (tweet.user.name, str(tweet.created_at), msg, str(coord), sentiment))
+    #conn.commit()
 
 class MyStreamListener(tweepy.streaming.StreamListener):
     def on_status(self, status):
@@ -116,6 +159,8 @@ class MyStreamListener(tweepy.streaming.StreamListener):
                     neg_geo.append({'lat':status.geo['coordinates'][0], 'lon':status.geo['coordinates'][1]})
 
                 neg_count += 1
+
+        send_to_db(status, sentiment)
 
         TweetsNamespace.broadcast('tweet_text', json.dumps(msg))
 
@@ -196,12 +241,12 @@ def convert_to_geo(pnt):
     return {'lat':pnts[0], 'lon':pnts[1]}
 
 def get_latest_tweets(X, count):
-    X = X.sort_values(by = ['tdate'])
     res = deque()
 
-    for i in range(X.shape[0] - count, X.shape[0]):
+    # tweets are sorted
+    for i in range(X.shape[0] - count, X.shape[0]):  
         tw = X.iloc[i, ]
-        tw = {'name':tw['tname'], 'time':datetime.datetime.fromtimestamp(tw['tdate']).strftime('%Y-%m-%d %H:%M:%S'),
+        tw = {'name':tw['tname'], 'time': datetime.datetime.fromtimestamp(tw['tdate']).strftime('%Y-%m-%d %H:%M:%S'),
               'text':tw['ttext'], 'sentiment':tw['ttype'], 'geo': None}
 
         res.append(tw)
@@ -220,14 +265,24 @@ if __name__ == '__main__':
     with open('models/vectorizer.pkl', 'rb') as f:
         vectorizer = pickle.load(f)
 
-    print '*** Loading completed: %s minutes ***' % round(((time.time() - start_time) / 60), 2)  
+    print '*** Loading completed: %s minutes ***' % round(((time.time() - start_time) / 60), 2) 
+    start_time = time.time()
 
-    X = pd.read_csv('data/old_tweets/MIPT.csv', sep=';', na_values='None')
-    X['tdate'] = X['tdate'].apply(lambda x: int(time.mktime(datetime.datetime.strptime(x, "%Y-%m-%d %H:%M:%S").timetuple())))
-    X['ttext'] = X['ttext'].apply(remove_retweet)
-    X['ttype'] = model.predict(vectorizer.transform(X['ttext']))
+    conn = None
+    cursor = None
 
-    overall_data = list(date_distribution(X, X['tdate'].min(), X['tdate'].max(), step = 'minute'))
+    X = pd.read_sql_table('tweets', create_engine('sqlite:///data/tweets.db'))
+    print '*** Load from db completed: %s minutes ***' % round(((time.time() - start_time) / 60), 2) 
+    start_time = time.time()
+
+
+    X['tdate'] = X['tdate'].apply(lambda x: int(time.mktime(datetime.datetime.strptime(x, '%Y-%m-%d %H:%M:%S').timetuple())))
+    X['tgeo'] = X['tgeo'].apply(lambda x: None if x == 'None' else x)
+
+    print '*** Data transform: %s minutes ***' % round(((time.time() - start_time) / 60), 2) 
+    start_time = time.time()
+
+    overall_data = list(date_distribution(X, X['tdate'].min(), X['tdate'].max(), step = None))
     blocks_data = list(date_distribution(X, X['tdate'].min(), X['tdate'].max(), step = 'hour', by_blocks = True, step_count = 4))
     pos_geo = list(X.dropna()['tgeo'][X['ttype'] == POS_TWEET].apply(convert_to_geo))
     neg_geo = list(X.dropna()['tgeo'][X['ttype'] == NEG_TWEET].apply(convert_to_geo))
@@ -240,6 +295,8 @@ if __name__ == '__main__':
     neg_count = X[X['ttype'] == NEG_TWEET].shape[0]
     pos_diff = pos_count
     neg_diff = neg_count
+
+    print '*** Global data loading completed: %s minutes ***' % round(((time.time() - start_time) / 60), 2) 
 
     auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
     auth.set_access_token(access_token, access_token_secret)

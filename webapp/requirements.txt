@@ -7,3 +7,4 @@ tweepy
 Flask
 nltk
 pandas
+SQLAlchemy==1.0.13

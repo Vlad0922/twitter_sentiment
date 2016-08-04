@@ -24,7 +24,7 @@ function requestData() {
 
             for (i = 0, len = msg['neg_geo'].length; i < len; i++) {
                 coord = map_chart.fromLatLonToPoint(msg['neg_geo'][i]);
-                map_chart.series[1].addPoint(coord);
+                map_chart.series[2].addPoint(coord)
             }
         },
         cache: false
@@ -121,6 +121,13 @@ function add_data(obj) {
 }
 
 $(document).ready(function() {
+
+    Highcharts.setOptions({
+        global: {
+            useUTC: false
+        }
+    });
+
     var socket = io.connect('/tweets');
     socket.on('connect', function() {
         console.log("socket connected");
@@ -151,19 +158,6 @@ $(document).ready(function() {
         title: {
             text: 'Overall tweets'
         },
-        // xAxis: {
-        //     type: 'datetime',
-        //     tickPixelInterval: 150,
-        //     maxZoom: 20 * 1000
-        // },
-        // yAxis: {
-        //     minPadding: 0.2,
-        //     maxPadding: 0.2,
-        //     title: {
-        //         text: 'Value',
-        //         margin: 80
-        //     }
-        // },
         series: [{
                     name: 'Positive',
                     data: [],
@@ -176,33 +170,17 @@ $(document).ready(function() {
                 }]
     });
 
-    // block_chart = new Highcharts.StockChart({
-    //     chart: {
-    //         renderTo: 'block-container',
-    //         defaultSeriesType: 'column'
-    //     },
-    //     title: {
-    //         text: 'Tweets by blocks'
-    //     },
-    //     // xAxis: {
-    //     //     type: 'datetime',
-    //     //     tickPixelInterval: 150,
-    //     //     maxZoom: 20 * 1000
-    //     // },
-    //     series: [{
-    //                 name: 'Positive',
-    //                 data: [],
-    //                 color: 'green'
-    //             },
-    //             {
-    //                 name: 'Negative',
-    //                 data: [],
-    //                 color: 'red'
-    //             }]
-    // })
+    // var map_div = document.getElementById('map-container')
+    // var map = new google.maps.Map(map_div, {
+    //       zoom: 13,
+    //       center: {lat: 55.751244, lng: -37.618423},
+    //     });
+
+    // var heatmap = new google.maps.visualization.HeatmapLayer({
+    //       map: map
+    //     });
 
     map_data = Highcharts.maps['custom/world'];
-    //map_data = Highcharts.maps['countries/ru/ru-all'];
     map_chart = new Highcharts.Map({
         chart: {
             renderTo: 'map-container'

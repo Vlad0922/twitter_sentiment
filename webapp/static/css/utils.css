@@ -34,6 +34,18 @@
   transition: .4s;
 }
 
+tbody, thead tr { display: block; }
+
+table, th, td {
+   border: 1px solid black;
+}
+
+tbody {
+    height: 250px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
 input:checked + .slider {
   background-color: #2196F3;
 }
