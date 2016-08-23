@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 
 import pickle
+import ConfigParser
 
 from tweepy import API as tweepy_API
 from tweepy import OAuthHandler
@@ -11,8 +12,6 @@ from tweepy import Cursor
 from nltk.tokenize.casual import TweetTokenizer
 
 from sqlalchemy import create_engine
-
-import codecs
 
 tknzr = TweetTokenizer()
 def tweet_tokenize(msg):
@@ -35,57 +34,65 @@ def convert_proba(p):
         return NEUT_TWEET
 
 keywords = {
-    'MIPT': ' OR '.join([u'МФТИ', u'физтех', u'\"Московский физико-технический институт\"']),
-    # 'MSU':  u'МГУ', #MSU count as Michigan state university in most tweets
-    # 'ITMO': u'ИТМО',
-    # 'SPAU': u'СПбАУ',
-    # 'SPBU': u'СПбГУ'
+    'МФТИ': ' OR '.join([u'МФТИ', u'физтех', u'\"Московский физико-технический институт\"']),
+    'МГУ':  ' OR '.join([u'МГУ', u'\"Московский государственный университет\"']), 
+    'ИТМО': ' OR '.join([u'ИТМО', u'\"Санкт-Петербургский национальный исследовательский университет информационных технологий, механики и оптики\"']),
+    #'СПбАУ': ' OR '.join([u'СПбАУ', u'\"Академический университет\"']),
+    'СПбГУ': ' OR '.join([u'СПбГУ', u'\"Санкт-Петербургский государственный университет\"'])
 }
 
 if __name__ == '__main__':    
-    #load twitter API tokens from file  
-    with open('webapp/tokens.txt') as f:
-        (access_token, access_token_secret,
-            consumer_key, consumer_secret) = f.read().split()
+    config = ConfigParser.ConfigParser()
+    config.read('webapp/config.ini') 
 
-    with open('webapp/db_conf.txt') as f:
-        psql_name, psql_pass = f.read().split()
-
-    auth = OAuthHandler(consumer_key, consumer_secret)
-    auth.set_access_token(access_token, access_token_secret)
+    auth = OAuthHandler(config.get('TwitterKeys', 'consumer_key'), config.get('TwitterKeys', 'consumer_secret'))
+    auth.set_access_token(config.get('TwitterKeys', 'access_token'), config.get('TwitterKeys', 'access_token_secret'))
     api = tweepy_API(auth)
+
+    engine = create_engine('postgresql://%s:%s@localhost/tweets_db' %
+                        (config.get('DatabaseLogin', 'login'), config.get('DatabaseLogin', 'password')))
+ 
+    X = pd.DataFrame(columns=['tname', 'tdate', 'ttext', 'tgeo', 'tid', 'tuniversity'])
 
     for u in keywords:
         finded = 0
 
-        engine = create_engine('postgresql://%s:%s@localhost/tweets_db' % (psql_name, psql_pass))
- 
-        X = pd.DataFrame(columns=['tname', 'tdate', 'ttext', 'tgeo', 'tid'])
+        try:
+            X_current = pd.DataFrame(columns=['tname', 'tdate', 'ttext', 'tgeo', 'tid'])
+            for tweet in Cursor(api.search, q=keywords[u], 
+                                rpp=100, result_type="recent").items():
 
-        for tweet in Cursor(api.search, q=keywords[u], 
-                            rpp=100, result_type="recent").items():
-            finded += 1
+                msg = tweet.text.replace('\n', ' ').replace('\r', ' ').replace(';', '')
+                coord = tweet.geo
+                if coord != None:
+                    coord = ','.join(map(str, coord['coordinates']))
 
-            msg = tweet.text.replace('\n', ' ').replace('\r', ' ').replace(';', '')
-            coord = tweet.geo
-            if coord != None:
-                coord = ','.join(map(str, coord['coordinates']))
+                row = pd.Series({'tname': tweet.user.name, 'tdate': str(tweet.created_at), 'ttext': msg, 'tgeo': str(coord), 'tid': tweet.id_str})
+                X_current = X_current.append(row, ignore_index = True)
 
-            row = pd.Series({'tname': tweet.user.name, 'tdate': str(tweet.created_at), 'ttext': msg, 'tgeo': str(coord), 'tid': tweet.id_str})
-            X = X.append(row, ignore_index = True)
+                finded += 1
+                if finded >= 800: #twitter API limit is 2500 tweets. Some universities are popular (MSU for example) and can exceed limit.
+                    break
+        except:
+            print 'twitter API limit exceed'
 
-        with open('webapp/models/model_sgd.pkl', 'rb') as f:
-            model = pickle.load(f)
 
-        with open('webapp/models/vectorizer.pkl', 'rb') as f:
-            vectorizer = pickle.load(f)
+        print u, X_current.shape[0]
 
-        X['ttype'] = np.apply_along_axis(convert_proba, 1, model.predict_proba(vectorizer.transform(X['ttext'].apply(remove_retweet))))
+        X_current['tuniversity'] = u
 
-        #hm...delete nonunique tweets?
-        # X_exist = pd.read_sql_table('tweets', engine)
-        # X = pd.concat([X, X_exist])
+        X = pd.concat([X, X_current], ignore_index = True)
 
-        X.to_sql('tweets', engine, if_exists='replace', index = False)
+    with open('webapp/models/model_sgd.pkl', 'rb') as f:
+        model = pickle.load(f)
 
-        print u, X.shape[0]
+    with open('webapp/models/vectorizer.pkl', 'rb') as f:
+        vectorizer = pickle.load(f)
+
+    X['ttype'] = np.apply_along_axis(convert_proba, 1, model.predict_proba(vectorizer.transform(X['ttext'].apply(remove_retweet))))
+
+    # Как-то удалять неуникальные твиты?
+    # X_exist = pd.read_sql_table('tweets', engine)
+    # X = pd.concat([X, X_exist])
+
+    X.to_sql('tweets', engine, if_exists='replace', index = False)

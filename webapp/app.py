@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import pandas as pd
+import numpy as np
 
 import os
 import json
@@ -9,6 +10,8 @@ import time
 import threading
 import pickle
 import urlparse
+import copy
+import ConfigParser
 
 import tweepy
 
@@ -42,17 +45,7 @@ update_counter = 0
 BLOCK_TICK = 15 #update block data every 15 ticks
 UPDATE_TICK = 60 #in seconds
 
-with open('tokens.txt') as f:
-    (access_token, access_token_secret,
-        consumer_key, consumer_secret) = f.read().split()
-
-with open('db_conf.txt') as f:
-    psql_name, psql_pass = f.read().split()
-
-def date_distribution(X, date_from, date_to, step = 'day', step_count = 1, by_blocks = False):
-    #is it a bug? values in db isnt sorted
-    #X = X[X['tdate'] <= date_to].sort_values(by = 'tdate')
-       
+def date_distribution(X, date_from, date_to, step = 'day', step_count = 1, by_blocks = False):      
     if step == 'minute':
         step = 60
     elif step == 'hour':
@@ -65,49 +58,34 @@ def date_distribution(X, date_from, date_to, step = 'day', step_count = 1, by_bl
     step *= step_count
     
     dates_in_range = range(date_from, date_to + 1, step)
-    pos_count = list()
-    neg_count = list()
-    neut_count = list()
-
-    i = 0
-    pos_total = 0
-    neg_total = 0
-    neut_total = 0
+    counts = {s:{u:0 for u in universities} for s in [POS_TWEET, NEG_TWEET, NEUT_TWEET]}    
+    date_counts = {s:{u:[] for u in universities} for s in [POS_TWEET, NEG_TWEET, NEUT_TWEET]}
 
     if by_blocks:
-        pos_diff = 0
-        neg_diff = 0
-        neut_diff = 0
+        diff_counts = copy.deepcopy(counts)
 
+    i = 0
     for d in dates_in_range:
         row = X.iloc[i, ]
         while row['tdate'] < d and i < X.shape[0]:
-            if row['ttype'] == POS_TWEET:
-                pos_total += 1
-            elif row['ttype'] == NEG_TWEET:
-                neg_total += 1
-            else:
-                neut_total += 1
+            counts[row['ttype']][row['tuniversity']] += 1
 
             i += 1
             row = X.iloc[i, ]
 
         if by_blocks:
-            pos_count.append(pos_total - pos_diff)
-            neg_count.append(neg_total - neg_diff)
-            neut_count.append(neut_total - neut_diff)
-
-            pos_diff = pos_total
-            neg_diff = neg_total
-            neut_diff = neut_total
+            for s in date_counts:
+                for u in universities:
+                    date_counts[s][u].append(counts[s][u] - diff_counts[s][u])
+                    diff_counts[s][u] = counts[s][u]
         else:
-            pos_count.append(pos_total)
-            neg_count.append(neg_total)
-            neut_count.append(neut_total)
+            for s in date_counts:
+                for u in universities: 
+                    date_counts[s][u].append(counts[s][u])
         
     #scale for js       
     dates_in_range = [d*1000 for d in dates_in_range]
-    return dates_in_range, pos_count, neg_count, neut_count
+    return dates_in_range, date_counts
 
 tknzr = TweetTokenizer()
 def tweet_tokenize(msg):
@@ -131,8 +109,16 @@ def convert_proba(p):
 def predict_sentiment(text):
     return convert_proba(model.predict_proba(preprocess_tweet(text))[0])
 
+def find_university(text):
+    for k in keywords:
+        for u in keywords[k]:
+            if u.lower() in text.lower():
+                return k
+
 class MyStreamListener(tweepy.streaming.StreamListener):
     def on_status(self, status):
+        global counts, geo_data, last_tweets
+
         sentiment = predict_sentiment(status.text)
         msg = { 'type': 'tweet',
                 'name': status.user.name, 'time': str(status.created_at), 'text': status.text, 'sentiment': sentiment, 'geo': status.geo, 'id': status.id_str}
@@ -141,30 +127,30 @@ class MyStreamListener(tweepy.streaming.StreamListener):
             if len(last_tweets) > TABLE_SIZE - 1:
                 last_tweets.popleft()
 
-            last_tweets.append(msg)
+            last_tweets.append(msg)            
 
-            global pos_count, neg_count, neut_count, geo_data 
+            university = find_university(status.text)
 
             if sentiment == POS_TWEET:
-                pos_count += 1
+                counts[POS_TWEET][university] += 1
             elif sentiment == NEG_TWEET:
-                neg_count += 1
+                counts[NEG_TWEET][university] += 1
             else:
-                neut_count += 1
+                counts[NEUT_TWEET][university] += 1
 
             if status.geo != None:
                 geo_data.append({'lat':status.geo['coordinates'][0], 'lon':status.geo['coordinates'][1]})
 
-        self.send_to_db(status, sentiment)
+        self.send_to_db(status, sentiment, university)
         TweetsNamespace.broadcast('tweet_text', json.dumps(msg))
 
-    def send_to_db(self, tweet, sentiment):
+    def send_to_db(self, tweet, sentiment, university):
         msg = tweet.text.replace('\n', ' ').replace('\r', ' ').replace(';', '')
         coord = tweet.geo
         if coord != None:
             coord = ','.join(map(str, coord['coordinates']))
 
-        tweets_table.insert().execute(tname = tweet.user.name, tdate = str(tweet.created_at),
+        tweets_table.insert().execute(tname = tweet.user.name, tdate = str(tweet.created_at), tuniversity = university,
                                       ttext = msg, tgeo = str(coord), tid = tweet.id_str, ttype = sentiment)
 
 class TweetsNamespace(BaseNamespace):
@@ -180,14 +166,13 @@ class TweetsNamespace(BaseNamespace):
             del self.sockets[id(self)]
 
         super(TweetsNamespace, self).disconnect(*args, **kwargs)
-    # broadcast to all sockets on this channel!
 
     @classmethod
     def broadcast(self, event, message):
         for ws in self.sockets.values():
             ws.emit(event, message)
 
-#Listening to web socket
+#Слушаем сокет
 @app.route('/socket.io/<path:rest>')
 def push_stream(rest):
     try:
@@ -203,40 +188,43 @@ def hello_world():
 @app.route('/live-data')
 def live_data():
     with lock:
-        data = {'overall_pos': zip(overall_data[0], overall_data[1]), 'overall_neg': zip(overall_data[0], overall_data[2]), 'overall_neut': zip(overall_data[0], overall_data[3]),
-                'blocks_pos': zip(blocks_data[0], blocks_data[1]), 'blocks_neg': zip(blocks_data[0], blocks_data[2]), 'blocks_neut': zip(blocks_data[0], blocks_data[3]),
-                'geo': geo_data, 'last_tweets': list(last_tweets)}
+        data = {'overall_time': overall_data[0], 'overall_data': overall_data[1],
+                'blocks_time': blocks_data[0], 'blocks_data': blocks_data[1],
+                'geo': geo_data, 'last_tweets': list(last_tweets), 'universities': universities}
 
     response = make_response(json.dumps(data))
     response.content_type = 'application/json'
     return response
 
 def send_new_data():
-    global update_counter, neg_diff, pos_diff, neut_diff, overall_data, blocks_data
+    global update_counter, counts, diffs, overall_data, blocks_data
 
     current_time = time.time()*1000
 
     with lock:
         update_counter += 1
-        msg = {'type': 'new_data', 'time': current_time, 'overall_pos': pos_count, 'overall_neg': neg_count, 'overall_neut': neut_count}
+        msg = {'type': 'new_data', 'time': current_time, 'overall_data': counts}
+
         overall_data[0].append(current_time)
-        overall_data[1].append(pos_count)
-        overall_data[2].append(neg_count)
-        overall_data[3].append(neut_count)
+        for s in [POS_TWEET, NEG_TWEET, NEUT_TWEET]:
+            for u in universities:
+                overall_data[1][s][u].append(counts[s][u])        
 
         if (update_counter % BLOCK_TICK) == 0:
-            msg['blocks_pos'] = pos_count - pos_diff
-            msg['blocks_neg'] = neg_count - neg_diff
-            msg['blocks_neut'] = neut_count - neut_diff
-
             blocks_data[0].append(current_time)
-            blocks_data[1].append(pos_count - pos_diff)
-            blocks_data[2].append(neg_count - neg_diff)
-            blocks_data[3].append(neut_count - neut_diff)
+            for s in [POS_TWEET, NEG_TWEET, NEUT_TWEET]:
+                for u in universities:
+                    blocks_data[1][s][u].append(counts[s][u] - diffs[s][u])
 
-            pos_diff = pos_count
-            neg_diff = neg_count
-            neut_diff = neut_count
+            new_blocks = dict()
+            for s in [POS_TWEET, NEG_TWEET, NEUT_TWEET]:
+                new_blocks[s] = dict()
+                for u in universities:
+                    new_blocks[s][u] = counts[s][u] - diffs[s][u]
+
+            msg['blocks_data'] = new_blocks
+
+            diffs = copy.deepcopy(counts)
 
     TweetsNamespace.broadcast('tweet_text', json.dumps(msg))
     threading.Timer(UPDATE_TICK, send_new_data).start()
@@ -259,9 +247,11 @@ def get_latest_tweets(X, count):
 
     return res
 
-keywords = [u'МФТИ', u'физико-технический институт', u'МГУ', u'СПбАУ', u'СПбГУ', u'ИТМО'] 
-#keywords = ['Trump'] #need many tweets for testing
+keywords = {u'МФТИ':[u'МФТИ', u'физтех'], u'МГУ':[u'МГУ'], u'СПбГУ':[u'СПбГУ'], u'ИТМО':[u'ИТМО']} 
 if __name__ == '__main__':
+    config = ConfigParser.ConfigParser()
+    config.read('config.ini')
+
     print '*** Loading started ***'
     start_time = time.time()
 
@@ -280,7 +270,8 @@ if __name__ == '__main__':
 
         engine = create_engine('postgresql://%s:%s@%s:%s/%s' % (url.username, url.password, url.hostname, url.port, url.path[1:]))
     else:
-        engine = create_engine('postgresql://%s:%s@localhost/tweets_db' % (psql_name, psql_pass))
+        engine = create_engine('postgresql://%s:%s@localhost/tweets_db' %
+                                (config.get('DatabaseLogin', 'login'), config.get('DatabaseLogin', 'password')))
 
     metadata = MetaData(bind = engine)
     tweets_table = Table('tweets', metadata, autoload = True)
@@ -298,28 +289,24 @@ if __name__ == '__main__':
     print '*** Data transform: %s minutes ***' % round(((time.time() - start_time) / 60), 2) 
     start_time = time.time()
 
+    universities = list(X['tuniversity'].unique())
+
     overall_data = list(date_distribution(X, X['tdate'].min(), X['tdate'].max(), step = 'minute'))
     blocks_data = list(date_distribution(X, X['tdate'].min(), X['tdate'].max(), step = 'hour', by_blocks = True, step_count = 4))
     geo_data = list(X.dropna()['tgeo'].apply(convert_to_geo))
 
     last_tweets = get_latest_tweets(X, TABLE_SIZE)
 
-    value_counts = X['ttype'].value_counts().to_dict()
-    pos_count = value_counts[POS_TWEET]
-    neg_count = value_counts[NEG_TWEET]
-    neut_count = value_counts[NEUT_TWEET]
-
-    pos_diff = pos_count
-    neg_diff = neg_count
-    neut_diff = neut_count
+    counts = {s:{u:X[(X['tuniversity'] == u) & (X['ttype'] == s)].shape[0] for u in universities} for s in [POS_TWEET, NEG_TWEET, NEUT_TWEET]}
+    diffs = copy.deepcopy(counts)
 
     print '*** Global data loading completed: %s minutes ***' % round(((time.time() - start_time) / 60), 2) 
 
-    auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
-    auth.set_access_token(access_token, access_token_secret)
+    auth = tweepy.OAuthHandler(config.get('TwitterKeys', 'consumer_key'), config.get('TwitterKeys', 'consumer_secret'))
+    auth.set_access_token(config.get('TwitterKeys', 'access_token'), config.get('TwitterKeys', 'access_token_secret'))
 
     myStream = tweepy.Stream(auth = auth, listener = MyStreamListener(), include_entities = True)
-    myStream.filter(track = keywords, async = True)
+    myStream.filter(track = [item for key in keywords for item in keywords[key]], async = True)
 
     threading.Timer(UPDATE_TICK, send_new_data).start()
 

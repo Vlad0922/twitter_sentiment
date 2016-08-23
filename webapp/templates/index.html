@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Twitter real-time sentiment analysis</title>
 
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.css">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
     <link rel="stylesheet" href="/static/css/utils.css">
 
   </head>
@@ -14,12 +14,11 @@
         <!-- Main jumbotron for a primary marketing message or call to action -->
     <div class="jumbotron">
       <div class="container-fluid" height="10%">
-        <br/>
         <p>Мониторинг тональности твитов о ВУЗ'ах в режиме реального времени</p>
       </div>
     </div>
 
-    <div style="margin-left:10%">
+    <div style="margin-left:10%" id="tools" class = "parent">
       <label id = "overall_label">overall data</label>
       <label class="switch" onchange="switch_charts()">
         <input type="checkbox">
@@ -28,50 +27,45 @@
       <label id = "blocks_label" style = "opacity:0.3">by blocks</label>
     </div>
 
+    <div class="container-fluid" style="width:100%">
+      <ul class="nav nav-tabs" role="tablist">
+      </ul>
+      <div class="tab-content">
+      </div>
+    </div>
+
     <div class="container-fluid">
       <div class="row">
         <div class="container-fluid" id="overall-container"></div>
       </div>
-      <div vlass="row">
-        <div class="container-fluid" id="block-container"></div>
+      <div class="row">
+        <div class="container-fluid" id="map-container" style="height:400px; width:100%;"></div>
       </div>
-<!--       <div vlass="row">
-        <div class="container-fluid" id="map-container"></div>
-      </div> -->
-      <div id="map-container" style="height:400px; width:100%;"></div>
-
     </div>
 
-    <!-- <div style="width:100%">     -->
-      <table width="100%" id="tweets_table" align="center">
+    <table class="table table-bordered" id="tweets_table">
         <tr>
-          <th>Autor</th>
-          <th>Date</th>
-          <th>Text</th>
-          <th>Sentiment</th>
+          <th>Автор</th>
+          <th>Дата</th>
+          <th>Твит</th>
+          <th>Тональность</th>
         </tr>
-      </table>
-    <!-- </div> -->
+    </table>
 
-      <footer>
-        <p>&copy; Myrov Vladislav, 2016, https://github.com/Vlad0922/twitter_sentiment</p>
-      </footer>
-    </div> <!-- /container -->
+    <footer>
+      <p>&copy; Myrov Vladislav, 2016, https://github.com/Vlad0922/twitter_sentiment</p>
+    </footer>
 
     <!-- libraries -->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.3.6/proj4.js"></script>
     <script src="https://code.highcharts.com/stock/highstock.js"></script>
-    <!-- <script src="http://code.highcharts.com/highcharts.js"></script> -->
     <script src="https://code.highcharts.com/highcharts-more.js"></script>
-<!--     <script src="https://code.highcharts.com/maps/modules/map.js"></script>
-    <script src="https://code.highcharts.com/mapdata/custom/world.js"></script>
-    <script src="https://code.highcharts.com/mapdata/countries/ru/ru-all.js"></script> -->
     <script src="https://code.highcharts.com/modules/exporting.js"></script>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCPeVwEwKApUBqT0kJ3_3pO7LDDXe5Bp8U&libraries=visualization"></script>
-    <script src="/static/js/socket.io.min.js"></script>
 
-    <script src="/static/js/highcharts.js"></script>
+    <script src="/static/js/socket.io.min.js"></script>
+    <script src="/static/js/utility.js"></script>
 
     <!-- Latest compiled and minified JavaScript -->
     <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
