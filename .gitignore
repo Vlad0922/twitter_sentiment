@@ -1,6 +1,3 @@
-tokens.txt
-maps_token.txt
-webapp/tokens.txt
-webapp/db_conf.txt
+webapp/config.ini
 *.pkl
 *.pyc

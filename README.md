@@ -10,6 +10,7 @@
 * tweepy
 * nltk
 * flask
+* postgresql
 * matplotlib и seaborn для графиков в ноутбуках (опционально)
 * gmaps плагин для jupyter notebooks опционально (https://github.com/pbugnion/gmaps)
 
