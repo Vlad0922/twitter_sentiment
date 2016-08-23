@@ -1,5 +1,5 @@
 # twitter_sentiment
-Анализ тональности сообщений в твиттере по фильтру.
+Анализ тональности сообщений в твиттере по различным ВУЗ'ам.
 
 ##Зависимости
 * python 2.7
@@ -16,22 +16,21 @@
 
 ##Инструкция
 
-Необходимо создать файл tokens.txt с ключами API для твиттера. В файле должны содержаться:
+Необходимо создать файл config.ini с конфигурационными данными приложения. Файл должен иметь следующий вид:
 
 ```shell
-access_token
+[TwitterKeys]
+access_token: 
+access_token_secret: 
+consumer_key: 
+consumer_secret: 
 
-access_token_secret
-
-consumer_key
-
-consumer_secret
+[DatabaseLogin]
+login: 
+password: 
 
 ```
-
-В указанном выше порядке.
-
-Если использовать google maps, то необходимо указать API key от Google Maps JS API в файле maps_token.txt
+Где TwitterKeys - API ключи твиттера, а DatabaseLogin - данные для авторизации в локальной СУБД.
 
 Монитор твитов осуществляется через веб-приложение. Для его запуска с использование virtualenv:
 
