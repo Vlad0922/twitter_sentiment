@@ -9,6 +9,22 @@
 /* Hide default HTML checkbox */
 .switch input {display:none;}
 
+.jumbotron {
+  background: #fff url("msu_pan.jpg") no-repeat center center;
+  background-size: auto 100%;
+}
+
+#header_text {
+  color: #fff;
+  text-align: center;
+  -webkit-text-stroke: 1px #483D8B;
+  font-size: 30px;
+}
+
+.tab-pane {
+  width: 99%;
+}
+
 /* The slider */
 .slider {
   position: absolute;
@@ -61,7 +77,15 @@ input:checked + .slider:before {
   width: 100%;
 }
 
-input[type="radio"] {
-  margin-left: 10px;
-  margin-right: 2px;
+#blocks_label {
+  opacity: 0.3;
+}
+
+#map_container {
+  height: 400px;
+  width: 95%;
+}
+
+#tools {
+  margin-left:10%
 }

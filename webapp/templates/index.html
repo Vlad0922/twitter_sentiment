@@ -11,36 +11,30 @@
 
   </head>
   <body>
-        <!-- Main jumbotron for a primary marketing message or call to action -->
-    <div class="jumbotron">
-      <div class="container-fluid" height="10%">
-        <p>Мониторинг тональности твитов о ВУЗ'ах в режиме реального времени</p>
+
+    <div class="jumbotron vertical-center">
+      <div class="container-fluid" id="header">
+        <p id = "header_text">Мониторинг тональности твитов о ВУЗ'ах в режиме реального времени</p>
       </div>
     </div>
 
-    <div style="margin-left:10%" id="tools" class = "parent">
+    <div id="tools" class = "parent">
       <label id = "overall_label">overall data</label>
       <label class="switch" onchange="switch_charts()">
         <input type="checkbox">
         <div class="slider round"></div>
       </label>
-      <label id = "blocks_label" style = "opacity:0.3">by blocks</label>
+      <label id = "blocks_label">by blocks</label>
     </div>
 
-    <div class="container-fluid" style="width:100%">
+    <div class="container-fluid">
       <ul class="nav nav-tabs" role="tablist">
       </ul>
       <div class="tab-content">
       </div>
     </div>
 
-    <div class="container-fluid">
-      <div class="row">
-        <div class="container-fluid" id="overall-container"></div>
-      </div>
-      <div class="row">
-        <div class="container-fluid" id="map-container" style="height:400px; width:100%;"></div>
-      </div>
+    <div class="container-fluid" id="map_container">
     </div>
 
     <table class="table table-bordered" id="tweets_table">
@@ -57,7 +51,7 @@
     </footer>
 
     <!-- libraries -->
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
+    <script src="https://code.jquery.com/jquery-1.12.4.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.3.6/proj4.js"></script>
     <script src="https://code.highcharts.com/stock/highstock.js"></script>
     <script src="https://code.highcharts.com/highcharts-more.js"></script>
@@ -68,6 +62,6 @@
     <script src="/static/js/utility.js"></script>
 
     <!-- Latest compiled and minified JavaScript -->
-    <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
   </body>
 </html>

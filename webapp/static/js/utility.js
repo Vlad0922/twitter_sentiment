@@ -11,6 +11,7 @@ var POS_TWEET   = 1
 var NEUT_TWEET  = 0
 var NEG_TWEET   = -1
 var MIPT_COORD  = {lat: 55.929695, lng: 37.520203} 
+var COLORS = {'green':'rgba(0, 255, 0, 0.3)', 'red':'rgba(255, 0, 0, 0.3)'}
 
 $(".nav-tabs").on("click", "a", function (e) {
         e.preventDefault();
@@ -56,7 +57,7 @@ function create_tabs() {
         var tabId = name;
 
         $('.nav-tabs').append('<li><a href="#' + name + '">' + name + '</a></li>');
-        $('.tab-content').append('<div class="tab-pane" style="width:99%" id="' + tabId + '"></div>');
+        $('.tab-content').append('<div class="tab-pane" id="' + tabId + '"></div>');
 
         var chart = new Highcharts.StockChart({
                 chart: {
@@ -114,10 +115,10 @@ function append_tweet(obj) {
     
     // Какое-то гейство. В css задать стиль?
     if (obj['sentiment'] == POS_TWEET) {
-        row.style.backgroundColor = 'rgba(0, 255, 0, 0.3)';
+        row.style.backgroundColor = COLORS['green'];
         sentiment_cell.innerHTML = 'pos';
     } else if (obj['sentiment'] == NEG_TWEET) {
-        row.style.backgroundColor = 'rgba(255, 0, 0, 0.3)';
+        row.style.backgroundColor = COLORS['red'];
         sentiment_cell.innerHTML = 'neg';
     } else {
         sentiment_cell.innerHTML = 'neutral'
@@ -172,7 +173,7 @@ function switch_charts() {
 function init_map() {
     console.log('initting map')
     
-    var map_div = document.getElementById('map-container')
+    var map_div = document.getElementById('map_container')
     var map = new google.maps.Map(map_div, {
           zoom: 15, 
           center: MIPT_COORD
