@@ -30,7 +30,8 @@ def normal_form(word, remove_hashtag = False):
 
 #почему-то нет некоторых знаков пунктуации и части стоп-слов
 custom_stops = [u'...', u'ещё', u'это', u'весь', u'..', u'—', u'я', u'и', u'a', u'\u2026']
-stops = set(stopwords.words('russian') + list(string.punctuation) + custom_stops + list(string.digits))
+university_names = [u'МФТИ', u'СПбГУ', u'МГУ', u'ИТМО']
+stops = set(stopwords.words('russian') + list(string.punctuation) + custom_stops + list(string.digits) + university_names)
 def remove_stop_words(words):
     return [w for w in words if w not in stop]
 
@@ -39,8 +40,8 @@ def tweet_tokenize(msg):
     return tknzr.tokenize(msg)
 
 if __name__ == '__main__':
-    neg = pd.read_csv('train_data/negative.csv', sep = ';')
-    pos = pd.read_csv('train_data/positive.csv', sep = ';')
+    neg = pd.read_csv('data_train/negative.csv', sep = ';')
+    pos = pd.read_csv('data_train/positive.csv', sep = ';')
 
     X = pd.concat([pos, neg])
 

@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+    # -*- coding: utf-8 -*-
 import pandas as pd
 import numpy as np
 
@@ -91,8 +91,9 @@ if __name__ == '__main__':
 
     X['ttype'] = np.apply_along_axis(convert_proba, 1, model.predict_proba(vectorizer.transform(X['ttext'].apply(remove_retweet))))
 
-    # Как-то удалять неуникальные твиты?
-    # X_exist = pd.read_sql_table('tweets', engine)
-    # X = pd.concat([X, X_exist])
+    X_exist = pd.read_sql_table('tweets', engine)
+    last_time = X_exist['tdate'].max()
+    X = X[X['tdate'] > last_time]
+    X = pd.concat([X_exist, X])
 
     X.to_sql('tweets', engine, if_exists='replace', index = False)
