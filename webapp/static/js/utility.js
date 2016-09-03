@@ -2,11 +2,13 @@ var statistics;
 var heatmap;
 var charts_dict = {};
 var show_overall = true;
+var chart;
 
 var TABLE_SIZE  = 10
 var POS_SERIES  = 0
 var NEG_SERIES  = 1
 var NEUT_SERIES = 2
+var COL_OFFSET  = 3
 var POS_TWEET   = 1
 var NEUT_TWEET  = 0
 var NEG_TWEET   = -1
@@ -59,7 +61,7 @@ function create_tabs() {
         $('.nav-tabs').append('<li><a href="#' + name + '">' + name + '</a></li>');
         $('.tab-content').append('<div class="tab-pane" id="' + tabId + '"></div>');
 
-        var chart = new Highcharts.StockChart({
+        chart = new Highcharts.StockChart({
                 chart: {
                     renderTo: tabId,
                     defaultSeriesType: 'spline',
@@ -82,7 +84,29 @@ function create_tabs() {
                             name: 'Neutral',
                             data: zip([statistics['overall_time'], statistics['overall_data'][NEUT_TWEET][name]]),
                             color: 'grey',
-                        }]
+                        },
+                        {
+                            name: 'Positive',
+                            data: zip([statistics['blocks_time'], statistics['blocks_data'][POS_TWEET][name]]),
+                            color: 'green',
+                            type: 'column',
+                            visible: false
+                        },
+                        {
+                            name: 'Negative',
+                            data: zip([statistics['blocks_time'], statistics['blocks_data'][NEG_TWEET][name]]),
+                            color: 'red',
+                            type: 'column',
+                            visible: false
+                        },
+                        {
+                            name: 'Neutral',
+                            data: zip([statistics['blocks_time'], statistics['blocks_data'][NEUT_TWEET][name]]),
+                            color: 'grey',
+                            type: 'column',
+                            visible: false
+                        }
+                        ]
             });
 
         charts_dict[name] = chart;
@@ -113,7 +137,6 @@ function append_tweet(obj) {
 
     var sentiment_cell = row.insertCell(3);
     
-    // Какое-то гейство. В css задать стиль?
     if (obj['sentiment'] == POS_TWEET) {
         row.style.backgroundColor = COLORS['green'];
         sentiment_cell.innerHTML = 'pos';
@@ -140,30 +163,12 @@ function switch_charts() {
     for(var u in charts_dict) {
         var chart = charts_dict[u];
         
-        if(show_overall) {
-            chart.series[POS_SERIES].setData(zip([statistics['blocks_time'], statistics['blocks_data'][POS_TWEET][u]]))
-            chart.series[POS_SERIES].update({type: 'column'});
-
-            chart.series[NEG_SERIES].setData(zip([statistics['blocks_time'], statistics['blocks_data'][NEG_TWEET][u]]))
-            chart.series[NEG_SERIES].update({type: 'column'});
-
-            chart.series[NEUT_SERIES].setData(zip([statistics['blocks_time'], statistics['blocks_data'][NEUT_TWEET][u]]))
-            chart.series[NEUT_SERIES].update({type: 'column'});
-
-            document.getElementById("blocks_label").style.opacity = 1.
-            document.getElementById("overall_label").style.opacity = 0.3
-        } else {
-            chart.series[POS_SERIES].setData(zip([statistics['overall_time'], statistics['overall_data'][POS_TWEET][u]]))
-            chart.series[POS_SERIES].update({type: 'spline'});
-
-            chart.series[NEG_SERIES].setData(zip([statistics['overall_time'], statistics['overall_data'][NEG_TWEET][u]]))
-            chart.series[NEG_SERIES].update({type: 'spline'});
-
-            chart.series[NEUT_SERIES].setData(zip([statistics['overall_time'], statistics['overall_data'][NEUT_TWEET][u]]))
-            chart.series[NEUT_SERIES].update({type: 'spline'});
-
-            document.getElementById("blocks_label").style.opacity = 0.3
-            document.getElementById("overall_label").style.opacity = 1.
+        for (i = 0; i < chart.series.length; i++) {
+            if (chart.series[i].visible) {
+                chart.series[i].hide()
+            } else {
+                chart.series[i].show()
+            }
         }
     }
 
@@ -206,14 +211,14 @@ function add_data(obj) {
     for (var u in charts_dict) {
         var chart = charts_dict[u];
 
-        if(show_overall) {
-            chart.series[POS_SERIES].addPoint([obj['time'], obj['overall_data'][POS_TWEET][u]], true, true)
-            chart.series[NEG_SERIES].addPoint([obj['time'], obj['overall_data'][NEG_TWEET][u]], true, true)  
-            chart.series[NEUT_SERIES].addPoint([obj['time'], obj['overall_data'][NEUT_TWEET][u]], true, true)  
-        } else if (obj['blocks_data'] != null){
-            chart.series[POS_SERIES].addPoint([obj['time'], obj['blocks_data'][POS_TWEET][u]], true, true)
-            chart.series[NEG_SERIES].addPoint([obj['time'], obj['blocks_data'][NEG_TWEET][u]], true, true)  
-            chart.series[NEUT_SERIES].addPoint([obj['time'], obj['blocks_data'][NEUT_TWEET][u]], true, true) 
+        chart.series[POS_SERIES].addPoint([obj['time'], obj['overall_data'][POS_TWEET][u]], true, true)
+        chart.series[NEG_SERIES].addPoint([obj['time'], obj['overall_data'][NEG_TWEET][u]], true, true)  
+        chart.series[NEUT_SERIES].addPoint([obj['time'], obj['overall_data'][NEUT_TWEET][u]], true, true)  
+
+        if (obj['blocks_data'] != null){
+            chart.series[POS_SERIES + COL_OFFSET].addPoint([obj['time'], obj['blocks_data'][POS_TWEET][u]], true, true)
+            chart.series[NEG_SERIES + COL_OFFSET]].addPoint([obj['time'], obj['blocks_data'][NEG_TWEET][u]], true, true)  
+            chart.series[NEUT_SERIES + COL_OFFSET]].addPoint([obj['time'], obj['blocks_data'][NEUT_TWEET][u]], true, true) 
         }
     }
 }
