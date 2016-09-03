@@ -164,11 +164,12 @@ function switch_charts() {
         var chart = charts_dict[u];
         
         for (i = 0; i < chart.series.length; i++) {
-            if (chart.series[i].visible) {
-                chart.series[i].hide()
-            } else {
-                chart.series[i].show()
-            }
+            // if (chart.series[i].visible) {
+            //     chart.series[i].hide()
+            // } else {
+            //     chart.series[i].show()
+            // }
+            chart.series[i].setVisible(!chart.series[i].visible)
         }
     }
 
@@ -217,8 +218,8 @@ function add_data(obj) {
 
         if (obj['blocks_data'] != null){
             chart.series[POS_SERIES + COL_OFFSET].addPoint([obj['time'], obj['blocks_data'][POS_TWEET][u]], true, true)
-            chart.series[NEG_SERIES + COL_OFFSET]].addPoint([obj['time'], obj['blocks_data'][NEG_TWEET][u]], true, true)  
-            chart.series[NEUT_SERIES + COL_OFFSET]].addPoint([obj['time'], obj['blocks_data'][NEUT_TWEET][u]], true, true) 
+            chart.series[NEG_SERIES + COL_OFFSET].addPoint([obj['time'], obj['blocks_data'][NEG_TWEET][u]], true, true)  
+            chart.series[NEUT_SERIES + COL_OFFSET].addPoint([obj['time'], obj['blocks_data'][NEUT_TWEET][u]], true, true) 
         }
     }
 }
@@ -237,7 +238,7 @@ $(document).ready(function() {
 
     socket.on('tweet_text', function(data) {
         var obj = jQuery.parseJSON(data);
-        // если получилен не JSON
+        // если получен не JSON
         if (obj == null) {
             obj = data;
         }
